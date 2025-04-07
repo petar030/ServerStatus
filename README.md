@@ -1,1 +1,3 @@
-A mobile app developed with Flutter that monitors a remote server, with the backend written in Python.
+# Mobile App for Remote Server Monitoring
+
+This mobile app, developed using Flutter, allows users to monitor a remote server. The backend is powered by Python, providing real-time data and system status updates.
