@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:server_status/firebase_msg.dart';
 
 
 
@@ -76,10 +77,15 @@ class AuthorizationClient {
   
   static Future<bool> verify_password(String uri, String password, String name) async {
   try {
-    String loginUri = '${uri}/login';
+    String loginUri = '$uri/login';
+    String fcm_token = await FirebaseMsg().getToken();
     final response = await http.post(
       Uri.parse(loginUri),
-      body: {'password': password},
+      body: {
+        'password': password,
+        'fcm_token': fcm_token
+      },
+
     );
 
     if (response.statusCode == 200) {
@@ -103,7 +109,7 @@ class AuthorizationClient {
     String? access_token = await get_access_token();
     String? refresh_token = await get_refresh_token();
     if(uri == null || access_token == null || refresh_token == null) return false;
-    String authUri = '${uri}/auth';
+    String authUri = '$uri/auth';
 
     bool isValid = await _verify_token(authUri, access_token);
     if(isValid) return true;
@@ -115,10 +121,27 @@ class AuthorizationClient {
 
   }
 
-  static Future<void> clear_credentials() async {
+  static Future<void> logout() async {
+
+
+      String? uri = await get_uri();
+
+
       await _storage.delete(key: 'access_token');
       await _storage.delete(key: 'refresh_token');
       await _storage.delete(key: 'uri');
+      
+      String fcm_token = await FirebaseMsg().getToken();
+      if(uri == null) return;
+      
+      String logoutUri = '$uri/logout';
+      await http.post(
+      Uri.parse(logoutUri),
+      body: {'fcm_token': fcm_token},
+      );
+
+    
+      
     }
 
   static Future<void> test() async{

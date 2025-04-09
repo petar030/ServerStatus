@@ -18,6 +18,29 @@ import keyring
 
 import websockets.exceptions
 
+
+'''TODO: Set up sqlite for FCMTokens,
+    Set up simple temperature warning notifications
+'''
+
+
+
+class FCMTokens:
+    _tokens = set()
+
+    @staticmethod
+    def add_token(token):
+        FCMTokens._tokens.add(token)
+
+    @staticmethod
+    def remove_token(token):
+        FCMTokens._tokens.discard(token)
+      
+
+    @staticmethod
+    def get_tokens():
+        return FCMTokens._tokens
+
 class SharedData:
 
     _instance = None
@@ -187,19 +210,21 @@ async def check_token(request):
 
 async def login(request):
     try:
-        # Uzimamo form data iz POST zahteva
         data = await request.post()
 
-        # Proveravamo da li je prosleđena lozinka
         if 'password' not in data:
             return web.Response(text='Password not provided', status=400)
 
         input_password = data['password']
 
-        # Dobijamo lozinku iz keyring-a
         stored_password = keyring.get_password("server_status", "default")
 
-        # Proveravamo da li je lozinka ispravna
+        #Add FCM token if exists
+        if input_password == stored_password and 'fcm_token' in data:
+            if data['fcm_token'] != '':
+                fcm_token = data['fcm_token']
+                FCMTokens.add_token(fcm_token)
+
         if input_password == stored_password:
             new_access_token = JWTManager.make_access_token()
             new_refresh_token = JWTManager.make_refresh_token()
@@ -212,6 +237,18 @@ async def login(request):
 
     except Exception as e:
         return web.Response(text=str(e), status=500)
+
+async def logout(request):
+    data = await request.post()
+
+    if 'fcm_token' not in data:
+        return web.Response(text='Token not provided', status=400)
+    
+    fcm_token = data['fcm_token']
+    FCMTokens.remove_token(fcm_token)
+    
+    return web.Response(text='Logout successful', status=200)
+
 
 async def global_shutdown_async(app):
     for ws in set(app['websockets']):
@@ -231,36 +268,42 @@ def create_app():
 
     app.router.add_get("/auth", check_token)
     app.router.add_post("/login", login)
+    app.router.add_post("/logout", logout)
     app.router.add_get('/ws', websocket_handler)
     app.on_shutdown.append(global_shutdown_async)
 
     return app
 
+
+#RUNNING USING gunicorn:
+# gunicorn -w 1 -k aiohttp.GunicornWebWorker -b 0.0.0.0:8080 server_status:app
+
+
 app = create_app()
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
-    # Start CPU data update in a separate thread
-    shared_data = SharedData()
-    cpu_thread = threading.Thread(target=shared_data.update_cpu_data, daemon=True)
-    cpu_thread.start()
+#     # Start CPU data update in a separate thread
+#     shared_data = SharedData()
+#     cpu_thread = threading.Thread(target=shared_data.update_cpu_data, daemon=True)
+#     cpu_thread.start()
 
 
-    # GET IP
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-        s.connect(("8.8.8.8", 53))
-        MY_IP = s.getsockname()[0]
-    print("My ip: " + MY_IP)
+#     # GET IP
+#     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+#         s.connect(("8.8.8.8", 53))
+#         MY_IP = s.getsockname()[0]
+#     print("My ip: " + MY_IP)
 
 
     
 
-    # Start aiohttp websocket server
-    app.router.add_get("/auth", check_token)
-    app.router.add_post("/login", login)
-    app.router.add_get('/ws', websocket_handler)
-    app.on_shutdown.append(global_shutdown_async)
-    web.run_app(app, host=MY_IP, port=8080)
+#     # Start aiohttp websocket server
+#     app.router.add_get("/auth", check_token)
+#     app.router.add_post("/login", login)
+#     app.router.add_get('/ws', websocket_handler)
+#     app.on_shutdown.append(global_shutdown_async)
+#     web.run_app(app, host=MY_IP, port=8080)
 
 

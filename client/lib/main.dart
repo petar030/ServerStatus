@@ -1,7 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_form_builder/flutter_form_builder.dart';
 import 'package:server_status/firebase_options.dart';
 import 'communication_sequential.dart';
 import 'package:flutter/services.dart';
@@ -9,8 +8,7 @@ import 'dart:convert';
 import 'authorization.dart';
 import 'firebase_msg.dart';
 
-
-Future<void> main() async{
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   //Notification service
@@ -42,7 +40,10 @@ class MyApp extends StatelessWidget {
 }
 
 class LoginPage extends StatefulWidget {
+  const LoginPage({super.key});
+
   @override
+  // ignore: library_private_types_in_public_api
   _LoginPageState createState() => _LoginPageState();
 }
 
@@ -56,7 +57,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-
+    // _showToken();
     _checkTokens();
   }
 
@@ -68,12 +69,10 @@ class _LoginPageState extends State<LoginPage> {
     String? uri = await AuthorizationClient.get_uri();
     String? name = await AuthorizationClient.get_name();
 
-    bool areTokensValid = await AuthorizationClient.verify_tokens().timeout(
-      Duration(seconds: 10),
-      onTimeout: () {
-        return false;
-      }
-    );
+    bool areTokensValid = await AuthorizationClient.verify_tokens()
+        .timeout(Duration(seconds: 10), onTimeout: () {
+      return false;
+    });
 
     if (!mounted) return;
 
@@ -98,12 +97,10 @@ class _LoginPageState extends State<LoginPage> {
     String uri = _uriController.text.trim();
     String name = _nameController.text;
     String port = _portController.text;
-    if(port == ""){
-      if(uri.startsWith("http://")) port = '8080';
-      if(uri.startsWith("https://")) port = '443';
+    if (port == "") {
+      if (uri.startsWith("http://")) port = '8080';
+      if (uri.startsWith("https://")) port = '443';
     }
-
-
 
     uri = '$uri:$port';
 
@@ -111,8 +108,8 @@ class _LoginPageState extends State<LoginPage> {
 
     bool isValid = await AuthorizationClient.verify_password(
         uri, _passwordController.text, name);
-    
-    if(uri == "" || port == "") isValid = false;
+
+    if (uri == "" || port == "") isValid = false;
 
     if (!mounted) return;
 
@@ -150,6 +147,16 @@ class _LoginPageState extends State<LoginPage> {
       },
     );
   }
+
+  // Future<void> _showToken() async{
+  //   String token = await FirebaseMsg().getToken();
+  //   Clipboard.setData(ClipboardData(text: token));
+
+  //   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+  //     content: Text('FCM Token: $token'),
+  //     duration: Duration(seconds: 5),
+  //   ));
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -220,7 +227,7 @@ class _LoginPageState extends State<LoginPage> {
 class MyHomePage extends StatelessWidget {
   late String uri;
   late String name;
-  MyHomePage({required this.uri, required this.name}) {}
+  MyHomePage({super.key, required this.uri, required this.name});
 
   @override
   Widget build(BuildContext context) {
@@ -286,7 +293,7 @@ class MyHomePage extends StatelessWidget {
                       // ),
                       ElevatedButton(
                         onPressed: () {
-                          AuthorizationClient.clear_credentials();
+                          AuthorizationClient.logout();
                           appState.disposeClient();
                           logout(context);
                         },
@@ -330,12 +337,12 @@ class MyAppState extends ChangeNotifier with WidgetsBindingObserver {
 
   String _modifyUri(String uri) {
     if (uri.startsWith('http://')) {
-      uri = 'ws://' + uri.substring(7); // Remove 'http://' and add 'ws://'
+      uri = 'ws://${uri.substring(7)}'; // Remove 'http://' and add 'ws://'
     } else if (uri.startsWith('https://')) {
-      uri = 'wss://' + uri.substring(8); // Remove 'https://' and add 'wss://'
+      uri = 'wss://${uri.substring(8)}'; // Remove 'https://' and add 'wss://'
     }
     if (!uri.endsWith('/ws')) {
-      uri = uri + '/ws';
+      uri = '$uri/ws';
     }
 
     return uri;
