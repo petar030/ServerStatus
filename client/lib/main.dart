@@ -1,12 +1,26 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_form_builder/flutter_form_builder.dart';
+import 'package:server_status/firebase_options.dart';
 import 'communication_sequential.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'authorization.dart';
+import 'firebase_msg.dart';
 
-void main() {
+
+Future<void> main() async{
+  WidgetsFlutterBinding.ensureInitialized();
+
+  //Notification service
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  await FirebaseMsg().initFCM();
+
+  //App
   runApp(MyApp());
 }
 
