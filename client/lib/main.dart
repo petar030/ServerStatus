@@ -54,7 +54,12 @@ class _LoginPageState extends State<LoginPage> {
     String? uri = await AuthorizationClient.get_uri();
     String? name = await AuthorizationClient.get_name();
 
-    bool areTokensValid = await AuthorizationClient.verify_tokens();
+    bool areTokensValid = await AuthorizationClient.verify_tokens().timeout(
+      Duration(seconds: 10),
+      onTimeout: () {
+        return false;
+      }
+    );
 
     if (!mounted) return;
 
