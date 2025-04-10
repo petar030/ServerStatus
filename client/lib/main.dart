@@ -70,6 +70,8 @@ class _LoginPageState extends State<LoginPage> {
     String? oldFcmToken = await AuthorizationClient.get_fcm_token();
     String? currFcmToken = await FirebaseMsg().getToken();
 
+    print(currFcmToken);
+
 
     if(oldFcmToken != null && oldFcmToken != currFcmToken){
       await AuthorizationClient.logout();

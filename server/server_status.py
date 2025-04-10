@@ -10,10 +10,10 @@ from aiohttp import web
 import weakref
 import keyring
 import sqlite3
+import requests
+import queue
 
-'''TODO: Set up sqlite for FCMTokens,
-    Set up simple temperature warning notifications
-'''
+
 
 
 
@@ -42,7 +42,7 @@ class FCMTokens:
                 conn.execute('INSERT OR IGNORE INTO fcm_tokens (token) VALUES (?)', (token,))
                 conn.commit()
             except sqlite3.Error as e:
-                print(f"Error adding token: {e}")
+                print(f"Error adding fcm_token: {e}")
 
     @staticmethod
     def remove_token(token):
@@ -52,7 +52,7 @@ class FCMTokens:
                 conn.execute('DELETE FROM fcm_tokens WHERE token = ?', (token,))
                 conn.commit()
             except sqlite3.Error as e:
-                print(f"Error removing token: {e}")
+                print(f"Error removing fcm_token: {e}")
 
     @staticmethod
     def get_tokens():
@@ -62,9 +62,72 @@ class FCMTokens:
                 cursor = conn.execute('SELECT token FROM fcm_tokens')
                 return {row[0] for row in cursor.fetchall()}
             except sqlite3.Error as e:
-                print(f"Error fetching tokens: {e}")
+                print(f"Error fetching fcm_tokens: {e}")
                 return set()
-            
+
+class Notify:
+    _uri = "https://fcm-server-nbbp.onrender.com/send-notification"
+    _notification_queue = queue.Queue()
+
+    @staticmethod
+    def _notification_service():
+        while True:
+            payload = Notify._notification_queue.get()
+            if payload is None: 
+                break
+            Notify._send_notification(payload)
+
+    @staticmethod
+    def _send_notification(payload):
+        tokens = FCMTokens.get_tokens()
+        headers = {
+            "Content-Type": "application/json"
+        }
+        
+        for token in tokens:
+            payload['token'] = token
+            try:
+                response = requests.post(Notify._uri, data=json.dumps(payload), headers=headers)
+            except Exception as e:
+                print(f"Error sending notification: {e}")
+
+    @staticmethod
+    def _enqueue_notification(payload):
+        Notify._notification_queue.put(payload)
+
+    @staticmethod
+    def send_cpu_temp_warning(curr_temp):
+        payload = {
+            "title": "CPU Temperature Warning",
+            "body": f"The current CPU temperature is {curr_temp}°C, which is too high!"
+        }
+        Notify._enqueue_notification(payload)
+
+    @staticmethod
+    def send_cpu_load_warning(curr_load):
+        payload = {
+            "title": "CPU Load Warning",
+            "body": f"The current CPU load is {curr_load}%, which is too high!"
+        }
+        Notify._enqueue_notification(payload)
+
+    @staticmethod
+    def send_mem_usage_warning(curr_usage):
+        payload = {
+            "title": "Memory Usage Warning",
+            "body": f"The current memory usage is {curr_usage}%, which is too high!"
+        }
+        Notify._enqueue_notification(payload)
+
+    @staticmethod
+    def start_service():
+        notification_thread = threading.Thread(target=Notify._notification_service, daemon=True)
+        notification_thread.start()
+
+    @staticmethod
+    def stop_service():
+        Notify._notification_queue.put(None)  
+        
 class SharedData:
 
     _instance = None
@@ -103,14 +166,51 @@ class SharedData:
 
     #MAIN CPU DATA UPDATING FUNCTION (This function will now run in a separate thread)
     def update_cpu_data(self):
+        cpu_temp_warning = False
+        cpu_usage_warning = False
+        mem_usage_warning = False
+        cpu_temp_threshold = 83
+        cpu_usage_threshold = 90
+        mem_usage_threshold = 90 
+
+
         while not self.event_flag.is_set():
+            cpu_usage = psutil.cpu_percent(1)
+            cpu_temp = self.get_cpu_temp()
+            mem = psutil.virtual_memory()
+            mem_used = mem.percent
+            mem_total = round((mem.total / (1024**3)), 2)
             with self.cpu_data_lock:
-                self.cpu_usage = psutil.cpu_percent(1)
-                self.cpu_temp = self.get_cpu_temp()
-                mem = psutil.virtual_memory()
-                self.mem_used = mem.percent
-                self.mem_total = round((mem.total / (1024**3)), 2)
+                self.cpu_usage = cpu_usage
+                self.cpu_temp = cpu_temp
+                self.mem_used = mem_used
+                self.mem_total = mem_total
                 #print(f"CPU Usage: {self.cpu_usage}%, CPU Temp: {self.cpu_temp}°C, Mem Used: {self.mem_used}%, Mem Total: {self.mem_total}GB")
+            
+            # NOTIFICATION HANDLING
+            # CPU temperature warning
+            if not cpu_temp_warning and cpu_temp > cpu_temp_threshold:
+                Notify.send_cpu_temp_warning(cpu_temp)
+                cpu_temp_warning = True
+            if cpu_temp_warning and cpu_temp < cpu_temp_threshold:
+                cpu_temp_warning = False
+
+            # CPU usage warning
+            if not cpu_usage_warning and cpu_usage > cpu_usage_threshold:
+                Notify.send_cpu_load_warning(cpu_usage)
+                cpu_usage_warning = True
+            if cpu_usage_warning and cpu_usage < cpu_usage_threshold:
+                cpu_usage_warning = False
+
+            # Memory usage warning
+            if not mem_usage_warning and mem_used > mem_usage_threshold:
+                Notify.send_mem_usage_warning(mem_used)
+                mem_usage_warning = True
+            if mem_usage_warning and mem_used < mem_usage_threshold:
+                mem_usage_warning = False
+
+
+
 
             time.sleep(0.3)  # Sleep for 0.3 seconds to control update rate
 
@@ -279,12 +379,15 @@ async def global_shutdown_async(app):
         await ws.close(code=aiohttp.WSCloseCode.GOING_AWAY)
     shared_data = SharedData()
     shared_data.stop_updating()
+    Notify.stop_service()
 
 def create_app():
     # Start CPU data update in a separate thread
     shared_data = SharedData()
     cpu_thread = threading.Thread(target=shared_data.update_cpu_data, daemon=True)
     cpu_thread.start()
+    #Start Notify thread
+    Notify.start_service()
     #Init fcm_tokens db
     FCMTokens._init_db()
     # Prepare app
