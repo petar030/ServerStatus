@@ -1,4 +1,3 @@
-import asyncio
 import json
 import threading
 import psutil
@@ -12,10 +11,40 @@ import keyring
 import sqlite3
 import requests
 import queue
+import configparser
+import os
 
 
+class ConfigManager:
+    config_file = os.path.join(os.path.dirname(__file__), "config.ini")
+    config = configparser.ConfigParser()
+
+    @staticmethod
+    def initialize():
+        if not os.path.exists(ConfigManager.config_file):
+            ConfigManager.create_default_config()
+        ConfigManager.config.read(ConfigManager.config_file)
 
 
+    @staticmethod
+    def create_default_config():
+        ConfigManager.config['network'] = {
+            'network_port': '8081' 
+        }
+        ConfigManager.config['thresholds'] = {
+            'cpu_temp': '80',
+            'cpu_usage': '90',
+            'mem_usage': '90'
+        }
+        with open(ConfigManager.config_file, 'w') as configfile:
+            ConfigManager.config.write(configfile)
+
+    @staticmethod
+    def get(section, option):
+        return ConfigManager.config.get(section, option)
+    @staticmethod
+    def get_int(section, option):
+        return int(ConfigManager.config.get(section, option))
 
 class FCMTokens:
     _db_path = "fcm_tokens.db"  
@@ -104,7 +133,7 @@ class Notify:
         Notify._enqueue_notification(payload)
 
     @staticmethod
-    def send_cpu_load_warning(curr_load):
+    def send_cpu_usage_warning(curr_load):
         payload = {
             "title": "CPU Load Warning",
             "body": f"The current CPU load is {curr_load}%, which is too high!"
@@ -169,9 +198,10 @@ class SharedData:
         cpu_temp_warning = False
         cpu_usage_warning = False
         mem_usage_warning = False
-        cpu_temp_threshold = 83
-        cpu_usage_threshold = 90
-        mem_usage_threshold = 90 
+        cpu_temp_threshold = ConfigManager.get_int('thresholds', 'cpu_temp')
+        cpu_usage_threshold = ConfigManager.get_int('thresholds', 'cpu_usage')
+        mem_usage_threshold = ConfigManager.get_int('thresholds', 'mem_usage')
+
 
 
         while not self.event_flag.is_set():
@@ -197,7 +227,7 @@ class SharedData:
 
             # CPU usage warning
             if not cpu_usage_warning and cpu_usage > cpu_usage_threshold:
-                Notify.send_cpu_load_warning(cpu_usage)
+                Notify.send_cpu_usage_warning(cpu_usage)
                 cpu_usage_warning = True
             if cpu_usage_warning and cpu_usage < cpu_usage_threshold:
                 cpu_usage_warning = False
@@ -382,14 +412,23 @@ async def global_shutdown_async(app):
     Notify.stop_service()
 
 def create_app():
-    # Start CPU data update in a separate thread
-    shared_data = SharedData()
-    cpu_thread = threading.Thread(target=shared_data.update_cpu_data, daemon=True)
-    cpu_thread.start()
+    #Init config file connection
+    ConfigManager.initialize()
     #Start Notify thread
     Notify.start_service()
     #Init fcm_tokens db
     FCMTokens._init_db()
+    # Start CPU data update in a separate thread
+    shared_data = SharedData()
+    cpu_thread = threading.Thread(target=shared_data.update_cpu_data, daemon=True)
+    cpu_thread.start()
+   
+    
+   
+
+
+
+
     # Prepare app
     app = web.Application()
     app['websockets'] = weakref.WeakSet()
@@ -406,32 +445,7 @@ def create_app():
 #RUNNING USING gunicorn:
 # gunicorn -w 1 -k aiohttp.GunicornWebWorker -b 0.0.0.0:8080 server_status:app
 
-
 app = create_app()
 
-
-# if __name__ == "__main__":
-
-#     # Start CPU data update in a separate thread
-#     shared_data = SharedData()
-#     cpu_thread = threading.Thread(target=shared_data.update_cpu_data, daemon=True)
-#     cpu_thread.start()
-
-
-#     # GET IP
-#     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-#         s.connect(("8.8.8.8", 53))
-#         MY_IP = s.getsockname()[0]
-#     print("My ip: " + MY_IP)
-
-
-    
-
-#     # Start aiohttp websocket server
-#     app.router.add_get("/auth", check_token)
-#     app.router.add_post("/login", login)
-#     app.router.add_get('/ws', websocket_handler)
-#     app.on_shutdown.append(global_shutdown_async)
-#     web.run_app(app, host=MY_IP, port=8080)
 
 
