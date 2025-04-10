@@ -19,6 +19,10 @@ class FirebaseMsg {
       return token;
     }
   }
+
+  Future<void> deleteToken() async{
+    await msgService.deleteToken();
+  }
 }
 
 

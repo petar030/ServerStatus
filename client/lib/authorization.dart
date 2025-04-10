@@ -26,6 +26,15 @@ class AuthorizationClient {
     return await _storage.read(key: 'refresh_token');
   }
 
+  static Future<void> _set_fcm_token(String fcm_token) async {
+    await _storage.write(key: 'fcm_token', value: fcm_token);
+  }
+
+  static Future<String?> get_fcm_token() async {
+    return await _storage.read(key: 'fcm_token');
+  }
+
+
   static Future<void> _set_uri(String uri) async {
     await _storage.write(key: 'uri', value: uri);
   }
@@ -92,6 +101,7 @@ class AuthorizationClient {
       var jsonResponse = jsonDecode(response.body);
       _set_access_token(jsonResponse['access_token']);
       _set_refresh_token(jsonResponse['refresh_token']);
+      _set_fcm_token(fcm_token);
       _set_uri(uri);
       set_name(name);
       return true;
@@ -131,8 +141,8 @@ class AuthorizationClient {
       await _storage.delete(key: 'refresh_token');
       await _storage.delete(key: 'uri');
       
-      String fcm_token = await FirebaseMsg().getToken();
-      if(uri == null) return;
+      String? fcm_token = await get_fcm_token();
+      if(uri == null || fcm_token == null) return;
       
       String logoutUri = '$uri/logout';
       await http.post(

@@ -57,7 +57,6 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    // _showToken();
     _checkTokens();
   }
 
@@ -65,6 +64,23 @@ class _LoginPageState extends State<LoginPage> {
     setState(() {
       _isLoading = true;
     });
+
+
+    //If notification token is updated, do a logout
+    String? oldFcmToken = await AuthorizationClient.get_fcm_token();
+    String? currFcmToken = await FirebaseMsg().getToken();
+
+    print('$oldFcmToken\n$currFcmToken');
+
+    if(oldFcmToken != null && oldFcmToken != currFcmToken){
+      await AuthorizationClient.logout();
+      setState(() {
+      _isLoading = false;
+      });
+      return;
+
+    }
+
 
     String? uri = await AuthorizationClient.get_uri();
     String? name = await AuthorizationClient.get_name();
