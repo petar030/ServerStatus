@@ -1,11 +1,6 @@
 import asyncio
 import json
-import signal
-import socket
-import sys
-import websockets
 import threading
-import random
 import psutil
 import time
 import jwt
@@ -14,10 +9,7 @@ import aiohttp
 from aiohttp import web
 import weakref
 import keyring
-
-
-import websockets.exceptions
-
+import sqlite3
 
 '''TODO: Set up sqlite for FCMTokens,
     Set up simple temperature warning notifications
@@ -26,21 +18,53 @@ import websockets.exceptions
 
 
 class FCMTokens:
-    _tokens = set()
+    _db_path = "fcm_tokens.db"  
+
+    @staticmethod
+    def _get_connection():
+        return sqlite3.connect(FCMTokens._db_path)
+
+    @staticmethod
+    def _init_db():
+        with FCMTokens._get_connection() as conn:
+            conn.execute('''
+                CREATE TABLE IF NOT EXISTS fcm_tokens (
+                    token TEXT PRIMARY KEY
+                )
+            ''')
+            conn.commit()
 
     @staticmethod
     def add_token(token):
-        FCMTokens._tokens.add(token)
+        FCMTokens._init_db()
+        with FCMTokens._get_connection() as conn:
+            try:
+                conn.execute('INSERT OR IGNORE INTO fcm_tokens (token) VALUES (?)', (token,))
+                conn.commit()
+            except sqlite3.Error as e:
+                print(f"Error adding token: {e}")
 
     @staticmethod
     def remove_token(token):
-        FCMTokens._tokens.discard(token)
-      
+        FCMTokens._init_db()
+        with FCMTokens._get_connection() as conn:
+            try:
+                conn.execute('DELETE FROM fcm_tokens WHERE token = ?', (token,))
+                conn.commit()
+            except sqlite3.Error as e:
+                print(f"Error removing token: {e}")
 
     @staticmethod
     def get_tokens():
-        return FCMTokens._tokens
-
+        FCMTokens._init_db()
+        with FCMTokens._get_connection() as conn:
+            try:
+                cursor = conn.execute('SELECT token FROM fcm_tokens')
+                return {row[0] for row in cursor.fetchall()}
+            except sqlite3.Error as e:
+                print(f"Error fetching tokens: {e}")
+                return set()
+            
 class SharedData:
 
     _instance = None
@@ -261,7 +285,8 @@ def create_app():
     shared_data = SharedData()
     cpu_thread = threading.Thread(target=shared_data.update_cpu_data, daemon=True)
     cpu_thread.start()
-
+    #Init fcm_tokens db
+    FCMTokens._init_db()
     # Prepare app
     app = web.Application()
     app['websockets'] = weakref.WeakSet()

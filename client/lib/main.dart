@@ -70,7 +70,6 @@ class _LoginPageState extends State<LoginPage> {
     String? oldFcmToken = await AuthorizationClient.get_fcm_token();
     String? currFcmToken = await FirebaseMsg().getToken();
 
-    print('$oldFcmToken\n$currFcmToken');
 
     if(oldFcmToken != null && oldFcmToken != currFcmToken){
       await AuthorizationClient.logout();
@@ -241,9 +240,9 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 class MyHomePage extends StatelessWidget {
-  late String uri;
-  late String name;
-  MyHomePage({super.key, required this.uri, required this.name});
+  final String uri;
+  final String name;
+  const MyHomePage({super.key, required this.uri, required this.name});
 
   @override
   Widget build(BuildContext context) {
