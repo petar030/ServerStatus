@@ -5,8 +5,6 @@ class FirebaseMsg {
 
   initFCM() async {
     await msgService.requestPermission();
-    var token = await msgService.getToken();
-    print(token);
     FirebaseMessaging.onBackgroundMessage(handlerNotificatoin);
     FirebaseMessaging.onMessage.listen(handlerNotificatoin);
   }

@@ -68,7 +68,6 @@ class WebSocketClient {
 
         }
       var answer = await queue.next;
-      print(answer);
       //If answer isn't 'SUCCESSFUL' send login page request 
       if (answer != 'SUCCESSFUL') {
           if (!_completer!.isCompleted) _completer!.complete();
@@ -99,7 +98,6 @@ class WebSocketClient {
       
         msgWithStatus = '{"online": true, "data": $message}';
         _controller.add(msgWithStatus); // Emituje poruku u stream
-        print('Received: $msgWithStatus');
         await Future.delayed(Duration(milliseconds: 200));
       }
     }

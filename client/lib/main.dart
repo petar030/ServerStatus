@@ -28,10 +28,28 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Namer App',
+      title: 'ServerStatus App',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color.fromARGB(255, 26, 148, 109),
+        brightness: Brightness.dark,
+        colorScheme: ColorScheme.dark(
+          surface: Colors.grey.shade900,
+          primary: Colors.grey.shade800,
+          secondary: Colors.grey.shade700,
+          onPrimary: Colors.white70,
+          onSecondary: Colors.white70,
+          outline: const Color.fromARGB(255, 42, 72, 124),
+        ),
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.grey.shade800, // Boja pozadine
+            foregroundColor: Colors.white70, // Boja teksta
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8.0), // Zakrivljenost ivica
+            ),
+            padding: EdgeInsets.symmetric(
+                vertical: 12.0, horizontal: 16.0), // Padding
+            elevation: 4, // Elevacija dugmeta (sjenka)
+          ),
         ),
       ),
       home: LoginPage(),
@@ -65,26 +83,39 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
-
-    //If notification token is updated, do a logout
     String? oldFcmToken = await AuthorizationClient.get_fcm_token();
     String? currFcmToken = await FirebaseMsg().getToken();
 
-    print(currFcmToken);
+    String? uri = await AuthorizationClient.get_uri(); 
+    String? name = await AuthorizationClient.get_name();
 
 
-    if(oldFcmToken != null && oldFcmToken != currFcmToken){
-      await AuthorizationClient.logout();
+    if(uri == null){
       setState(() {
       _isLoading = false;
       });
       return;
+    }
 
+    bool available = await AuthorizationClient.ping(uri);
+    if(!available){
+      showServerNotification(context, name);
+      setState(() {
+      _isLoading = false;
+      });
+      return;
     }
 
 
-    String? uri = await AuthorizationClient.get_uri();
-    String? name = await AuthorizationClient.get_name();
+    //If notification token is updated, do a logout
+    if (oldFcmToken != null && oldFcmToken != currFcmToken) {
+      await AuthorizationClient.logout()
+          .timeout(Duration(seconds: 10), onTimeout: () {});
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
 
     bool areTokensValid = await AuthorizationClient.verify_tokens()
         .timeout(Duration(seconds: 10), onTimeout: () {
@@ -97,7 +128,7 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = false;
     });
 
-    if (areTokensValid && uri != null && name != null) {
+    if (areTokensValid && name != null) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -145,6 +176,17 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _refresh() async {
+    setState(() {
+      _passwordController.clear();
+      _uriController.clear();
+      _nameController.clear();
+      _portController.clear();
+      _isLoading = false;
+    });
+    _checkTokens();
+  }
+
   void _showErrorDialog() {
     showDialog(
       context: context,
@@ -165,20 +207,55 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  // Future<void> _showToken() async{
-  //   String token = await FirebaseMsg().getToken();
-  //   Clipboard.setData(ClipboardData(text: token));
-
-  //   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-  //     content: Text('FCM Token: $token'),
-  //     duration: Duration(seconds: 5),
-  //   ));
-  // }
-
+  void showServerNotification(BuildContext context, String? name) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Row(
+        children: [
+          Icon(Icons.warning, color: Colors.redAccent),  
+          SizedBox(width: 8),  
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Auto Connect Failed",  // Naslov
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onInverseSurface,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  "$name may be offline",  // Glavni tekst
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onInverseSurface,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: Theme.of(context).colorScheme.inverseSurface,  
+      behavior: SnackBarBehavior.floating,  
+      margin: EdgeInsets.only(top: 20, left: 16, right: 16, bottom: 20), 
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12), 
+      ),
+      duration: Duration(seconds: 4),  
+    ),
+  );
+}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Login')),
+      appBar: AppBar(
+        title: Text('Login'),
+        titleTextStyle:
+            TextStyle(color: Theme.of(context).colorScheme.onPrimary),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(20),
         child: Column(
@@ -241,6 +318,8 @@ class _LoginPageState extends State<LoginPage> {
   }
 }
 
+
+
 class MyHomePage extends StatelessWidget {
   final String uri;
   final String name;
@@ -255,25 +334,37 @@ class MyHomePage extends StatelessWidget {
         builder: (context) {
           var appState = context.watch<MyAppState>();
 
-          Color statusDotColor = appState.online ? Colors.green : Colors.red;
-          String statusText =
-              appState.online ? "Server is online" : "Server is offline";
-
           return Scaffold(
             appBar: AppBar(
-              title: Text(name),
+              leading: IconButton(
+                icon: Icon(Icons.exit_to_app, size: 24.0),
+                onPressed: () {
+                  AuthorizationClient.logout();
+                  appState.disposeClient();
+                  logout(context);
+                },
+              ),
+              title: Center(
+                child: Text(
+                  name,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 24,
+                  ),
+                ),
+              ),
+              titleTextStyle: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimary,
+                fontSize: 19,
+              ),
               actions: [
                 Row(
                   children: [
-                    Text(statusText),
-                    SizedBox(width: 5),
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: statusDotColor,
-                        shape: BoxShape.circle,
-                      ),
+                    Icon(
+                      appState.online ? Icons.wifi : Icons.signal_wifi_off,
+                      size: 24.0,
+                      color: appState.online ? Colors.green : Colors.red,
                     ),
                     SizedBox(width: 10),
                   ],
@@ -281,53 +372,64 @@ class MyHomePage extends StatelessWidget {
               ],
             ),
             body: Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.only(
+                top: 10.0,
+                left: 20.0,
+                right: 20.0,
+                bottom: 20.0,
+              ),
               child: PopScope(
                 canPop: false,
                 onPopInvokedWithResult: ((didPop, result) {
                   if (didPop) return;
                   _showExitDialog(context, appState);
                 }),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          // Here we pass the appState to SecondPage
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => SecondPage(appState: appState),
-                            ),
-                          );
-                        },
-                        child: CPUCard(appState: appState),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => SecondPage(appState: appState),
+                          ),
+                        );
+                      },
+                      child: CPUCard(appState: appState),
+                    ),
+                    const SizedBox(height: 20),
+                    MemoryCard(appState: appState),
+                  ],
+                ),
+              ),
+            ),
+            floatingActionButton: Align(
+              alignment: Alignment.bottomCenter,
+              child: AnimatedOpacity(
+                opacity: appState.online ? 0.0 : 1.0, // Ovisno o statusu mreže
+                duration: Duration(
+                    milliseconds: 1500), // Vreme za koje se indikator povlači
+                child: Container(
+                  width: 250.0, // Postavite širinu na fiksnu vrednost
+                  height: 60.0, // Visina dugmeta
+                  decoration: BoxDecoration(
+                    color: appState.online
+                        ? Colors.green
+                        : Colors.red, // Zeleni za online, crveni za offline
+                    borderRadius: BorderRadius.circular(15), // Zaobljeni ivici
+                  ),
+                  child: Center(
+                    child: Text(
+                      appState.online
+                          ? 'Connection established' // Poruka kada je online
+                          : 'Server not connected', // Poruka kada je offline
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 20),
-                      MemoryCard(appState: appState),
-                      const SizedBox(height: 20),
-                      // ElevatedButton(
-                      //   onPressed: () {
-                      //     appState.pauseClient();
-                      //   },
-                      //   child: Text('Block'),
-                      // ),
-                      // ElevatedButton(
-                      //   onPressed: () {
-                      //     appState.unpauseClient();
-                      //   },
-                      //   child: Text('Start'),
-                      // ),
-                      ElevatedButton(
-                        onPressed: () {
-                          AuthorizationClient.logout();
-                          appState.disposeClient();
-                          logout(context);
-                        },
-                        child: Text('Log out'),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -448,14 +550,30 @@ void _showExitDialog(BuildContext context, MyAppState appState) {
     context: context,
     builder: (BuildContext dialogContext) {
       return AlertDialog(
-        title: Text('Exit confirmation'),
-        content: Text('Do you want to exit this app?'),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        title: Text(
+          'Exit confirmation',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
+        ),
+        content: Text(
+          'Do you want to exit this app?',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimaryContainer,
+          ),
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
             },
-            child: Text('Cancel'),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -463,7 +581,12 @@ void _showExitDialog(BuildContext context, MyAppState appState) {
               Navigator.of(dialogContext).pop();
               SystemNavigator.pop();
             },
-            child: Text('Exit'),
+            child: Text(
+              'Exit',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
           ),
         ],
       );
@@ -479,40 +602,149 @@ class CPUCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final titleStyle = theme.textTheme.headlineSmall!.copyWith(
-      color: theme.colorScheme.onSecondaryContainer,
+      color: theme.colorScheme.onPrimaryContainer,
       fontWeight: FontWeight.bold,
-      fontSize: 24,
+      fontSize: 28, // Povećano za bolji izgled
     );
     final itemStyle = theme.textTheme.bodyLarge!.copyWith(
-      color: theme.colorScheme.onSecondaryContainer,
-      fontSize: 18,
+      color: theme.colorScheme.onPrimaryContainer,
+      fontSize: 20, // Povećano za bolji izgled
     );
 
-    return Card(
-      color: theme.colorScheme.secondaryContainer,
-      elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(15),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("CPU", style: titleStyle),
-            const SizedBox(height: 15),
-            ListTile(
-              title: Text("Temperature:", style: itemStyle),
-              subtitle: Text("${appState.cpuTemp}°C", style: itemStyle),
-            ),
-            ListTile(
-              title: Text("Load:", style: itemStyle),
-              subtitle: Text("${appState.cpuLoad}%", style: itemStyle),
-            ),
-          ],
+    Color temperatureColor = appState.cpuTemp > 75
+        ? Colors.red
+        : appState.cpuTemp > 50
+            ? Colors.orange
+            : Colors.green;
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SecondPage(appState: appState),
+          ),
+        );
+      },
+      child: Card(
+        color: theme.colorScheme.primaryContainer,
+        elevation: 8,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "CPU",
+                style: titleStyle,
+              ),
+              const SizedBox(height: 15),
+              ListTile(
+                leading: Icon(
+                  Icons.memory,
+                  color: theme.colorScheme.secondary,
+                  size: 28, // Povećana veličina ikone
+                ),
+                title: Text("Load:", style: itemStyle),
+                subtitle: Row(
+                  children: [
+                    Expanded(
+                      child: LinearProgressIndicator(
+                        value: appState.cpuLoad / 100,
+                        minHeight: 10,
+                        borderRadius: BorderRadius.circular(15),
+                        color: Colors.green,
+                        backgroundColor:
+                            theme.colorScheme.onPrimaryContainer.withAlpha(38),
+                      ),
+                    ),
+                    SizedBox(width: 10),
+                    Text("${appState.cpuLoad}%",
+                        style: itemStyle,
+                        key: ValueKey<double>(appState.cpuLoad)),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.thermostat,
+                  color: temperatureColor,
+                  size: 28, // Povećana veličina ikone
+                ),
+                title: Text("Temperature:", style: itemStyle),
+                subtitle: Row(
+                  children: [
+                    Text(
+                      "${appState.cpuTemp}°C",
+                      style: itemStyle,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
+  }
+}
+
+class MemoryUsagePainter extends CustomPainter {
+  final double usage; // vrednost od 0.0 do 1.0
+  final Color backgroundColor;
+  final Color usageColor;
+
+  MemoryUsagePainter({
+    required this.usage,
+    required this.backgroundColor,
+    required this.usageColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final center = rect.center;
+    final radius = size.width / 2;
+
+    final backgroundPaint = Paint()
+      ..color = backgroundColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 16;
+
+    final usagePaint = Paint()
+      ..color = usageColor
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 16;
+
+    final startAngle = -3.14; // levo
+    final sweepAngle = 3.14 * usage;
+
+    // Crtaj pozadinski luk (pun polukrug)
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      3.14,
+      false,
+      backgroundPaint,
+    );
+
+    // Crtaj zauzeće
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      startAngle,
+      sweepAngle,
+      false,
+      usagePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant MemoryUsagePainter oldDelegate) {
+    return oldDelegate.usage != usage;
   }
 }
 
@@ -524,39 +756,73 @@ class MemoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final titleStyle = theme.textTheme.headlineSmall!.copyWith(
-      color: theme.colorScheme.onSecondaryContainer,
+      color: theme.colorScheme.onPrimaryContainer,
       fontWeight: FontWeight.bold,
-      fontSize: 24,
+      fontSize: 28, // Jednako kao u CPUCard
     );
     final itemStyle = theme.textTheme.bodyLarge!.copyWith(
-      color: theme.colorScheme.onSecondaryContainer,
-      fontSize: 18,
+      color: theme.colorScheme.onPrimaryContainer,
+      fontSize: 20,
     );
 
+    final memUsedPercent = appState.memUsed / 100;
+
     return Card(
-      color: theme.colorScheme.secondaryContainer,
+      color: theme.colorScheme.primaryContainer,
       elevation: 8,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
       ),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text("Memory", style: titleStyle),
-            const SizedBox(height: 15),
-            ListTile(
-              title: Text("Used Memory:", style: itemStyle),
-              subtitle: Text("${appState.memUsed.toStringAsFixed(1)} %",
-                  style: itemStyle),
-            ),
-            ListTile(
-              title: Text("Total Memory:", style: itemStyle),
-              subtitle: Text("${appState.memTotal.toStringAsFixed(1)} GB",
-                  style: itemStyle),
-            ),
-          ],
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Naslov "Memory"
+              Text("Memory", style: titleStyle),
+
+              // Veći razmak između naslova i kružnog prikaza
+              const SizedBox(height: 50),
+
+              // Kružni prikaz zauzeća memorije
+              Center(
+                child: SizedBox(
+                  width: 180,
+                  height: 120,
+                  child: CustomPaint(
+                    painter: MemoryUsagePainter(
+                      usage: memUsedPercent,
+                      backgroundColor:
+                          theme.colorScheme.onPrimaryContainer.withAlpha(38),
+                      usageColor: Colors.green,
+                    ),
+                    child: Center(
+                      child: Text(
+                        "${appState.memUsed.toStringAsFixed(1)} %",
+                        style: titleStyle.copyWith(fontSize: 22),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              // Max Memory info
+              ListTile(
+                leading: Icon(
+                  Icons.storage_outlined,
+                  color: theme.colorScheme.secondary,
+                  size: 28,
+                ),
+                title: Text("Max Memory:", style: itemStyle),
+                subtitle: Text(
+                  "${appState.memTotal.toStringAsFixed(1)} GB",
+                  style: itemStyle,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

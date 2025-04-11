@@ -403,6 +403,11 @@ async def logout(request):
     
     return web.Response(text='Logout successful', status=200)
 
+async def ping(request):
+    return web.Response(text="pong")  
+
+
+
 
 async def global_shutdown_async(app):
     for ws in set(app['websockets']):
@@ -434,6 +439,7 @@ def create_app():
     app['websockets'] = weakref.WeakSet()
 
     app.router.add_get("/auth", check_token)
+    app.router.add_get("/ping", ping)
     app.router.add_post("/login", login)
     app.router.add_post("/logout", logout)
     app.router.add_get('/ws', websocket_handler)

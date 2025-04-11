@@ -10,6 +10,16 @@ class AuthorizationClient {
 
   static final _storage = FlutterSecureStorage();
 
+  static Future<bool> ping(String uri) async {
+  try {
+    String pingUri = '$uri/ping';
+    final response = await http.get(Uri.parse(pingUri));
+    return response.body.trim() == "pong";
+  } catch (e) {
+    return false;
+  }
+}
+
   static Future<void> _set_access_token(String token) async {
     await _storage.write(key: 'access_token', value: token);
   }
@@ -109,7 +119,7 @@ class AuthorizationClient {
       return false;
     }
   } catch (e) {
-    print("Greška prilikom slanja zahteva: $e");
+    print("Error sending request: $e");
     return false;
   }
 }
@@ -155,11 +165,15 @@ class AuthorizationClient {
     }
 
   static Future<void> test() async{
-    // await _set_access_token('--');
-    // await _set_refresh_token('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc0NDQ2MjUwNCwiaWF0IjoxNzQzODU3NzA0fQ.nRQ7fPyhruPnS0uxOniBrxfy4FJNfLN_iYMMvVxtnqc');
-    // await verify_tokens('http://192.168.1.7:8080/auth');
-    String? tmp = await get_access_token();
-    print(tmp);
+    bool valid;
+    
+    while(true){
+      valid = await ping("http://192.168.1.7:8080");
+      if(valid) print("SERVER AVAILABLE");
+      else print("SERVER NOT AVAILABLE");
+      await Future.delayed(Duration(seconds: 2));
+
+    }
   }
 
   
