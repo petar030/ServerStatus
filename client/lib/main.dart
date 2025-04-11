@@ -292,7 +292,18 @@ class MyHomePage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CPUCard(appState: appState),
+                      GestureDetector(
+                        onTap: () {
+                          // Here we pass the appState to SecondPage
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SecondPage(appState: appState),
+                            ),
+                          );
+                        },
+                        child: CPUCard(appState: appState),
+                      ),
                       const SizedBox(height: 20),
                       MemoryCard(appState: appState),
                       const SizedBox(height: 20),
@@ -546,6 +557,38 @@ class MemoryCard extends StatelessWidget {
                   style: itemStyle),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class SecondPage extends StatelessWidget {
+  final MyAppState appState;
+
+  const SecondPage({super.key, required this.appState});
+
+  @override
+  Widget build(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: appState,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text('Second Page'),
+        ),
+        body: Consumer<MyAppState>(
+          builder: (context, appState, child) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('CPU Temperature: ${appState.cpuTemp}°C'),
+                  Text('CPU Load: ${appState.cpuLoad}%'),
+                  Text('Memory Used: ${appState.memUsed}%'),
+                ],
+              ),
+            );
+          },
         ),
       ),
     );

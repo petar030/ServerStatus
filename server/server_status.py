@@ -242,7 +242,7 @@ class SharedData:
 
 
 
-            time.sleep(0.3)  # Sleep for 0.3 seconds to control update rate
+            time.sleep(0.1)  # Sleep for 0.3 seconds to control update rate
 
     def stop_updating(self):
         self.event_flag.set()

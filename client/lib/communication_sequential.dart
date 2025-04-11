@@ -100,7 +100,7 @@ class WebSocketClient {
         msgWithStatus = '{"online": true, "data": $message}';
         _controller.add(msgWithStatus); // Emituje poruku u stream
         print('Received: $msgWithStatus');
-        await Future.delayed(Duration(milliseconds: 500));
+        await Future.delayed(Duration(milliseconds: 200));
       }
     }
     catch(error){
