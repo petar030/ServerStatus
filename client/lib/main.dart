@@ -86,26 +86,24 @@ class _LoginPageState extends State<LoginPage> {
     String? oldFcmToken = await AuthorizationClient.get_fcm_token();
     String? currFcmToken = await FirebaseMsg().getToken();
 
-    String? uri = await AuthorizationClient.get_uri(); 
+    String? uri = await AuthorizationClient.get_uri();
     String? name = await AuthorizationClient.get_name();
 
-
-    if(uri == null){
+    if (uri == null) {
       setState(() {
-      _isLoading = false;
+        _isLoading = false;
       });
       return;
     }
 
     bool available = await AuthorizationClient.ping(uri);
-    if(!available){
-      showServerNotification(context, name);
+    if (!available) {
+      autoConnectNotification(context, name);
       setState(() {
-      _isLoading = false;
+        _isLoading = false;
       });
       return;
     }
-
 
     //If notification token is updated, do a logout
     if (oldFcmToken != null && oldFcmToken != currFcmToken) {
@@ -207,48 +205,92 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void showServerNotification(BuildContext context, String? name) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Row(
-        children: [
-          Icon(Icons.warning, color: Colors.redAccent),  
-          SizedBox(width: 8),  
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+  void autoConnectNotification(BuildContext context, String? name) {
+  showDialog(
+    context: context,
+    builder: (BuildContext dialogContext) {
+      return AlertDialog(
+        title: Text('Auto Connect Failed', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                Text(
-                  "Auto Connect Failed",  // Naslov
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onInverseSurface,
-                    fontSize: 16,
-                  ),
-                ),
-                Text(
-                  "$name may be offline",  // Glavni tekst
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onInverseSurface,
-                    fontSize: 14,
+                Icon(Icons.warning, color: Colors.redAccent),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "$name may be offline",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,  // Bold name
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: 16,
+                    ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-      backgroundColor: Theme.of(context).colorScheme.inverseSurface,  
-      behavior: SnackBarBehavior.floating,  
-      margin: EdgeInsets.only(top: 20, left: 16, right: 16, bottom: 20), 
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12), 
-      ),
-      duration: Duration(seconds: 4),  
-    ),
+            SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    _refresh();
+                    Navigator.of(dialogContext).pop();  // Close the dialog
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor,  // Using theme color
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Try Again',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onPrimary, // Text color from theme
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(width: 10),  // Space between buttons
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(dialogContext).pop();  // Close the dialog
+                  },
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondary, // Using theme color
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSecondary, // Text color from theme
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      );
+    },
   );
 }
-  @override
+
+
+ @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -317,8 +359,6 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-
-
 
 class MyHomePage extends StatelessWidget {
   final String uri;
