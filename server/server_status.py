@@ -170,12 +170,26 @@ class SharedData:
         if not hasattr(self, 'initialized'):
             self.cpu_usage = 0
             self.cpu_temp = 0
+            self.cpu_data_lock = threading.Lock() 
+            self.cpu_temp_threshold = ConfigManager.get_int('thresholds', 'cpu_temp')
+            self.cpu_usage_threshold = ConfigManager.get_int('thresholds', 'cpu_usage')
+
             self.mem_used = 0
             self.mem_total = 0
-            self.cpu_data_lock = threading.Lock()  # Replaced asyncio.Lock with threading.Lock
+            self.mem_data_lock = threading.Lock()
+            self.mem_usage_threshold = ConfigManager.get_int('thresholds', 'mem_usage')
+
+            self.interface_name = self.get_first_active_interface()
+            self.down_speed = 0
+            self.up_speed = 0
+            self.net_data_lock = threading.Lock()
+
+
             self.event_flag = threading.Event()
             self.initialized = True
+           
 
+    #CPU
     #HELPER TEMP FUNCTION
     def get_cpu_temp(self):
         temperatures = psutil.sensors_temperatures()
@@ -192,74 +206,112 @@ class SharedData:
             return round(total_temp / temp_count, 1)
         else:
             return -1
-
-    #MAIN CPU DATA UPDATING FUNCTION (This function will now run in a separate thread)
+    #MAIN CPU DATA UPDATING FUNCTION (Threaded)
     def update_cpu_data(self):
         cpu_temp_warning = False
         cpu_usage_warning = False
-        mem_usage_warning = False
-        cpu_temp_threshold = ConfigManager.get_int('thresholds', 'cpu_temp')
-        cpu_usage_threshold = ConfigManager.get_int('thresholds', 'cpu_usage')
-        mem_usage_threshold = ConfigManager.get_int('thresholds', 'mem_usage')
-
-
-
         while not self.event_flag.is_set():
             cpu_usage = psutil.cpu_percent(1)
             cpu_temp = self.get_cpu_temp()
-            mem = psutil.virtual_memory()
-            mem_used = mem.percent
-            mem_total = round((mem.total / (1024**3)), 2)
+
             with self.cpu_data_lock:
                 self.cpu_usage = cpu_usage
                 self.cpu_temp = cpu_temp
-                self.mem_used = mem_used
-                self.mem_total = mem_total
-                #print(f"CPU Usage: {self.cpu_usage}%, CPU Temp: {self.cpu_temp}°C, Mem Used: {self.mem_used}%, Mem Total: {self.mem_total}GB")
-            
-            # NOTIFICATION HANDLING
+
             # CPU temperature warning
-            if not cpu_temp_warning and cpu_temp > cpu_temp_threshold:
+            if not cpu_temp_warning and cpu_temp > self.cpu_temp_threshold:
                 Notify.send_cpu_temp_warning(cpu_temp)
                 cpu_temp_warning = True
-            if cpu_temp_warning and cpu_temp < cpu_temp_threshold:
+            if cpu_temp_warning and cpu_temp < self.cpu_temp_threshold:
                 cpu_temp_warning = False
 
             # CPU usage warning
-            if not cpu_usage_warning and cpu_usage > cpu_usage_threshold:
+            if not cpu_usage_warning and cpu_usage > self.cpu_usage_threshold:
                 Notify.send_cpu_usage_warning(cpu_usage)
                 cpu_usage_warning = True
-            if cpu_usage_warning and cpu_usage < cpu_usage_threshold:
+            if cpu_usage_warning and cpu_usage < self.cpu_usage_threshold:
                 cpu_usage_warning = False
 
+            time.sleep(0.1)  
+
+
+    #MEMORY
+    #MAIN MEMORY DATA UPDATING FUNCTION (Threaded)
+    def update_mem_data(self):
+        mem_usage_warning = False
+        while not self.event_flag.is_set():
+            mem = psutil.virtual_memory()
+            mem_used = mem.percent
+            mem_total = round((mem.total / (1024**3)), 2)
+
+            with self.mem_data_lock:
+                self.mem_used = mem_used
+                self.mem_total = mem_total
+
             # Memory usage warning
-            if not mem_usage_warning and mem_used > mem_usage_threshold:
+            if not mem_usage_warning and mem_used > self.mem_usage_threshold:
                 Notify.send_mem_usage_warning(mem_used)
                 mem_usage_warning = True
-            if mem_usage_warning and mem_used < mem_usage_threshold:
+            if mem_usage_warning and mem_used < self.mem_usage_threshold:
                 mem_usage_warning = False
 
+            time.sleep(0.1)  # Adjust this as needed
+    
+    #NETWORK
+    def get_first_active_interface(self):
+        net_counters = psutil.net_io_counters(pernic=True)
+        for iface, counters in net_counters.items():
+            if (iface != 'lo') and (counters.bytes_recv > 0 or counters.bytes_sent > 0):
+                return iface
+        return "Interface name not available"
+    #MAIN NET DATA UPDATING FUNCTION(Threaded)
+    def update_net_data(self):
+        if self.interface_name is None:
+            return
+
+        while not self.event_flag.is_set():
+            net_start = psutil.net_io_counters(pernic=True).get(self.interface_name)
+            time.sleep(1)
+            net_end = psutil.net_io_counters(pernic=True).get(self.interface_name)
+
+            if not net_start or not net_end:
+                continue  #Interface not active
+
+            down_speed = round((net_end.bytes_recv - net_start.bytes_recv), 2)  # B/s
+            up_speed = round((net_end.bytes_sent - net_start.bytes_sent), 2)
+
+            with self.net_data_lock:
+                self.down_speed = down_speed
+                self.up_speed = up_speed
 
 
 
-            time.sleep(0.1)  # Sleep for 0.3 seconds to control update rate
-
+    #GLOBAL
     def stop_updating(self):
         self.event_flag.set()
-
-    #RETURNING RECORDED DATA
+    #RETURNING GET_UPDATE DATA
     def get_update(self):
         with self.cpu_data_lock:
             cpu_usage = self.cpu_usage
             cpu_temp = self.cpu_temp
+        with self.mem_data_lock:
             mem_used = self.mem_used
             mem_total = self.mem_total
+        with self.net_data_lock:
+            up_speed = self.up_speed
+            down_speed = self.down_speed
+        
+        uptime = (datetime.datetime.now() - datetime.datetime.fromtimestamp(psutil.boot_time())).total_seconds()
         data = {
             "timestamp": time.time(),
+            "uptime": uptime,
             "cpu_usage": cpu_usage,
             "cpu_temp": cpu_temp,
             "mem_used": mem_used,
-            "mem_total": mem_total
+            "mem_total": mem_total,
+            "interface_name": self.interface_name,
+            "up_speed": up_speed,
+            "down_speed": down_speed
         }
         return json.dumps(data)
 
@@ -427,11 +479,14 @@ def create_app():
     shared_data = SharedData()
     cpu_thread = threading.Thread(target=shared_data.update_cpu_data, daemon=True)
     cpu_thread.start()
-   
+    #Start MEM data update in a separate thread
+    mem_thread = threading.Thread(target=shared_data.update_mem_data, daemon=True)
+    mem_thread.start()
+    #Start NET data update in a separate thread
+    net_thread = threading.Thread(target=shared_data.update_net_data, daemon=True)
+    net_thread.start()
     
    
-
-
 
 
     # Prepare app

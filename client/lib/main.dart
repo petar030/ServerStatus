@@ -206,91 +206,100 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void autoConnectNotification(BuildContext context, String? name) {
-  showDialog(
-    context: context,
-    builder: (BuildContext dialogContext) {
-      return AlertDialog(
-        title: Text('Auto Connect Failed', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.warning, color: Colors.redAccent),
-                SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    "$name may be offline",
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,  // Bold name
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: 20),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                GestureDetector(
-                  onTap: () {
-                    _refresh();
-                    Navigator.of(dialogContext).pop();  // Close the dialog
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).primaryColor,  // Using theme color
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: Text('Auto Connect Failed',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.redAccent),
+                  SizedBox(width: 8),
+                  Expanded(
                     child: Text(
-                      'Try Again',
+                      "$name may be offline",
                       style: TextStyle(
-                        color: Theme.of(context).colorScheme.onPrimary, // Text color from theme
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.bold, // Bold name
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontSize: 16,
                       ),
                     ),
                   ),
-                ),
-                SizedBox(width: 10),  // Space between buttons
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(dialogContext).pop();  // Close the dialog
-                  },
-                  child: Container(
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.secondary, // Using theme color
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSecondary, // Text color from theme
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                ],
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  GestureDetector(
+                    onTap: () {
+                      _refresh();
+                      Navigator.of(dialogContext).pop(); // Close the dialog
+                    },
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                      decoration: BoxDecoration(
+                        color:
+                            Theme.of(context).primaryColor, // Using theme color
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Try Again',
+                        style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onPrimary, // Text color from theme
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-      );
-    },
-  );
-}
+                  SizedBox(width: 10), // Space between buttons
+                  GestureDetector(
+                    onTap: () {
+                      Navigator.of(dialogContext).pop(); // Close the dialog
+                    },
+                    child: Container(
+                      padding:
+                          EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .secondary, // Using theme color
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Theme.of(context)
+                              .colorScheme
+                              .onSecondary, // Text color from theme
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        );
+      },
+    );
+  }
 
-
- @override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -365,6 +374,14 @@ class MyHomePage extends StatelessWidget {
   final String name;
   const MyHomePage({super.key, required this.uri, required this.name});
 
+  String formatUptime(int uptimeInSeconds) {
+  int hours = uptimeInSeconds ~/ 3600;
+  int minutes = (uptimeInSeconds % 3600) ~/ 60;
+  int seconds = uptimeInSeconds % 60;
+
+  return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+}
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
@@ -424,23 +441,37 @@ class MyHomePage extends StatelessWidget {
                   if (didPop) return;
                   _showExitDialog(context, appState);
                 }),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => SecondPage(appState: appState),
-                          ),
-                        );
-                      },
-                      child: CPUCard(appState: appState),
-                    ),
-                    const SizedBox(height: 20),
-                    MemoryCard(appState: appState),
-                  ],
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SecondPage(appState: appState),
+                            ),
+                          );
+                        },
+                        child: CPUCard(appState: appState),
+                      ),
+                      const SizedBox(height: 20),
+                      MemoryCard(appState: appState),
+                      const SizedBox(height: 20),
+                      NetworkCard(appState: appState),
+                      const SizedBox(
+                        height: 20,
+                      ),
+                      Text(
+                        "Up time: ${formatUptime(appState.upTime)}",
+                        style: Theme.of(context).textTheme.bodyLarge!.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimary,
+                              fontSize: 22, 
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -494,6 +525,10 @@ class MyAppState extends ChangeNotifier with WidgetsBindingObserver {
   var cpuLoad = 0.0;
   var memUsed = 0.0;
   var memTotal = 0.0;
+  var interfaceName = "";
+  var downSpeed = 0.0;
+  var upSpeed = 0.0;
+  var upTime = 0;
   late WebSocketClient client;
   late String uri;
   late Function logoutCallback; // Callback funkcija za logout
@@ -532,6 +567,11 @@ class MyAppState extends ChangeNotifier with WidgetsBindingObserver {
           cpuLoad = (jsonData['cpu_usage'] as num?)?.toDouble() ?? cpuLoad;
           memUsed = (jsonData['mem_used'] as num?)?.toDouble() ?? memUsed;
           memTotal = (jsonData['mem_total'] as num?)?.toDouble() ?? memTotal;
+          interfaceName =
+              jsonData['interface_name']?.toString() ?? interfaceName;
+          upSpeed = (jsonData['up_speed'] as num?)?.toDouble() ?? upSpeed;
+          downSpeed = (jsonData['down_speed'] as num?)?.toDouble() ?? downSpeed;
+          upTime = (jsonData['uptime'] as num?)?.toInt() ?? upTime;
           online = true;
         } else {
           online = false;
@@ -634,6 +674,15 @@ void _showExitDialog(BuildContext context, MyAppState appState) {
   );
 }
 
+Color getGradientColor(double value) {
+  value = value.clamp(0.0, 100.0);
+
+  Color startColor = Colors.green;
+  Color endColor = Colors.red;
+
+  return Color.lerp(startColor, endColor, value / 100)!;
+}
+
 class CPUCard extends StatelessWidget {
   const CPUCard({super.key, required this.appState});
   final MyAppState appState;
@@ -651,81 +700,65 @@ class CPUCard extends StatelessWidget {
       fontSize: 20, // Povećano za bolji izgled
     );
 
-    Color temperatureColor = appState.cpuTemp > 75
-        ? Colors.red
-        : appState.cpuTemp > 50
-            ? Colors.orange
-            : Colors.green;
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => SecondPage(appState: appState),
-          ),
-        );
-      },
-      child: Card(
-        color: theme.colorScheme.primaryContainer,
-        elevation: 8,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "CPU",
-                style: titleStyle,
+    return Card(
+      color: theme.colorScheme.primaryContainer,
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "CPU",
+              style: titleStyle,
+            ),
+            const SizedBox(height: 15),
+            ListTile(
+              leading: Icon(
+                Icons.memory,
+                color: theme.colorScheme.secondary,
+                size: 28, // Povećana veličina ikone
               ),
-              const SizedBox(height: 15),
-              ListTile(
-                leading: Icon(
-                  Icons.memory,
-                  color: theme.colorScheme.secondary,
-                  size: 28, // Povećana veličina ikone
-                ),
-                title: Text("Load:", style: itemStyle),
-                subtitle: Row(
-                  children: [
-                    Expanded(
-                      child: LinearProgressIndicator(
-                        value: appState.cpuLoad / 100,
-                        minHeight: 10,
-                        borderRadius: BorderRadius.circular(15),
-                        color: Colors.green,
-                        backgroundColor:
-                            theme.colorScheme.onPrimaryContainer.withAlpha(38),
-                      ),
+              title: Text("Load:", style: itemStyle),
+              subtitle: Row(
+                children: [
+                  Expanded(
+                    child: LinearProgressIndicator(
+                      value: appState.cpuLoad / 100,
+                      minHeight: 10,
+                      borderRadius: BorderRadius.circular(15),
+                      color: getGradientColor(appState.cpuLoad),
+                      backgroundColor:
+                          theme.colorScheme.onPrimaryContainer.withAlpha(38),
                     ),
-                    SizedBox(width: 10),
-                    Text("${appState.cpuLoad}%",
-                        style: itemStyle,
-                        key: ValueKey<double>(appState.cpuLoad)),
-                  ],
-                ),
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.thermostat,
-                  color: temperatureColor,
-                  size: 28, // Povećana veličina ikone
-                ),
-                title: Text("Temperature:", style: itemStyle),
-                subtitle: Row(
-                  children: [
-                    Text(
-                      "${appState.cpuTemp}°C",
+                  ),
+                  SizedBox(width: 10),
+                  Text("${appState.cpuLoad}%",
                       style: itemStyle,
-                    ),
-                  ],
-                ),
+                      key: ValueKey<double>(appState.cpuLoad)),
+                ],
               ),
-            ],
-          ),
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.thermostat,
+                color: getGradientColor(appState.cpuTemp.toDouble()),
+                size: 28, // Povećana veličina ikone
+              ),
+              title: Text("Temperature:", style: itemStyle),
+              subtitle: Row(
+                children: [
+                  Text(
+                    "${appState.cpuTemp}°C",
+                    style: itemStyle,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -733,14 +766,12 @@ class CPUCard extends StatelessWidget {
 }
 
 class MemoryUsagePainter extends CustomPainter {
-  final double usage; // vrednost od 0.0 do 1.0
+  final double usage;
   final Color backgroundColor;
-  final Color usageColor;
 
   MemoryUsagePainter({
     required this.usage,
     required this.backgroundColor,
-    required this.usageColor,
   });
 
   @override
@@ -755,7 +786,7 @@ class MemoryUsagePainter extends CustomPainter {
       ..strokeWidth = 16;
 
     final usagePaint = Paint()
-      ..color = usageColor
+      ..color = getGradientColor(usage * 100)
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeWidth = 16;
@@ -837,7 +868,6 @@ class MemoryCard extends StatelessWidget {
                       usage: memUsedPercent,
                       backgroundColor:
                           theme.colorScheme.onPrimaryContainer.withAlpha(38),
-                      usageColor: Colors.green,
                     ),
                     child: Center(
                       child: Text(
@@ -865,6 +895,113 @@ class MemoryCard extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class NetworkCard extends StatelessWidget {
+  const NetworkCard({super.key, required this.appState});
+  final MyAppState appState;
+
+  String formatSpeed(double speedInBytes) {
+    if (speedInBytes < 1024) {
+      return "${speedInBytes.toStringAsFixed(2)} B/s";
+    } else if (speedInBytes < 1024 * 1024) {
+      return "${(speedInBytes / 1024).toStringAsFixed(2)} KB/s";
+    } else {
+      return "${(speedInBytes / (1024 * 1024)).toStringAsFixed(2)} MB/s";
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final titleStyle = theme.textTheme.headlineSmall!.copyWith(
+      color: theme.colorScheme.onPrimaryContainer,
+      fontWeight: FontWeight.bold,
+      fontSize: 28,
+    );
+    final itemStyle = theme.textTheme.bodyLarge!.copyWith(
+      color: theme.colorScheme.onPrimaryContainer,
+      fontSize: 20,
+    );
+
+    return Card(
+      color: theme.colorScheme.primaryContainer,
+      elevation: 12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Network",
+              style: titleStyle.copyWith(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 15),
+            ListTile(
+              leading: Icon(
+                Icons.network_cell,
+                color: theme.colorScheme.onPrimaryContainer,
+                size: 28,
+              ),
+              title: Text("Interface Name", style: itemStyle),
+              subtitle: Text(
+                appState.interfaceName,
+                style: itemStyle.copyWith(fontWeight: FontWeight.bold),
+              ),
+            ),
+            const Divider(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildSpeedColumn(
+                  icon: Icons.upload_outlined,
+                  speed: appState.upSpeed,
+                  color: Colors.green,
+                ),
+                _buildSpeedColumn(
+                  icon: Icons.download_outlined,
+                  speed: appState.downSpeed,
+                  color: Colors.red,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSpeedColumn({
+    required IconData icon,
+    required double speed,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(
+          icon,
+          color: color,
+          size: 40, // Povećane ikone za upload i download
+        ),
+        const SizedBox(height: 5),
+        Text(
+          formatSpeed(speed),
+          style: TextStyle(
+            fontSize: 24, // Povećan font za brzine
+            color: color,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 }
