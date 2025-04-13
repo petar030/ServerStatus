@@ -43,6 +43,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     bool available = await AuthorizationClient.ping(uri);
+    if(!mounted) return;
     if (!available) {
       autoConnectNotification(context, name);
       setState(() {
@@ -97,6 +98,15 @@ class _LoginPageState extends State<LoginPage> {
 
     uri = '$uri:$port';
 
+    bool available = await AuthorizationClient.ping(uri);
+    if (!available) {
+      _showLoginErrorDialog("Server not avaiable");
+      setState(() {
+        _isLoading = false;
+      });
+      return;
+    }
+
     if (name == "") name = uri;
 
     bool isValid = await AuthorizationClient.verify_password(
@@ -119,7 +129,7 @@ class _LoginPageState extends State<LoginPage> {
 ),
       );
     } else {
-      _showErrorDialog();
+      _showLoginErrorDialog("Invalid password");
     }
   }
 
@@ -134,13 +144,13 @@ class _LoginPageState extends State<LoginPage> {
     _checkTokens();
   }
 
-  void _showErrorDialog() {
+  void _showLoginErrorDialog(String errorText) {
     showDialog(
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
           title: Text('Login Failed'),
-          content: Text('Invalid password. Please try again.'),
+          content: Text(errorText),
           actions: <Widget>[
             TextButton(
               onPressed: () {

@@ -88,7 +88,9 @@ class MyHomePage extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => CpuPage(appState: appState,),
+                                builder: (_) => CpuPage(
+                                      appState: appState,
+                                    ),
                                 settings: RouteSettings(name: '/cpuPage')),
                           );
                         },
@@ -116,23 +118,20 @@ class MyHomePage extends StatelessWidget {
             floatingActionButton: Align(
               alignment: Alignment.bottomCenter,
               child: AnimatedOpacity(
-                opacity: appState.online ? 0.0 : 1.0, // Ovisno o statusu mreže
-                duration: Duration(
-                    milliseconds: 1500), // Vreme za koje se indikator povlači
+                opacity: appState.online ? 0.0 : 1.0,
+                duration: Duration(milliseconds: 1500),
                 child: Container(
-                  width: 250.0, // Postavite širinu na fiksnu vrednost
-                  height: 60.0, // Visina dugmeta
+                  width: 250.0,
+                  height: 60.0,
                   decoration: BoxDecoration(
-                    color: appState.online
-                        ? Colors.green
-                        : Colors.red, // Zeleni za online, crveni za offline
-                    borderRadius: BorderRadius.circular(15), // Zaobljeni ivici
+                    color: appState.online ? Colors.green : Colors.red,
+                    borderRadius: BorderRadius.circular(15),
                   ),
                   child: Center(
                     child: Text(
                       appState.online
-                          ? 'Connection established' // Poruka kada je online
-                          : 'Server not connected', // Poruka kada je offline
+                          ? 'Connection established'
+                          : 'Server not connected',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 18,
@@ -143,6 +142,8 @@ class MyHomePage extends StatelessWidget {
                 ),
               ),
             ),
+            floatingActionButtonLocation:
+                FloatingActionButtonLocation.centerFloat,
           );
         },
       ),
@@ -152,8 +153,9 @@ class MyHomePage extends StatelessWidget {
   void logout(BuildContext context) {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => LoginPage(),
-       settings: RouteSettings(name: '/loginPage')),
+      MaterialPageRoute(
+          builder: (context) => LoginPage(),
+          settings: RouteSettings(name: '/loginPage')),
     );
   }
 }
@@ -169,7 +171,6 @@ class MyAppState extends ChangeNotifier with WidgetsBindingObserver {
   var upSpeed = 0.0;
   var upTime = 0;
   List<double> cpuCoreLoads = [];
-
 
   late WebSocketClient client;
   late String uri;
@@ -216,7 +217,8 @@ class MyAppState extends ChangeNotifier with WidgetsBindingObserver {
           upSpeed = (jsonData['up_speed'] as num?)?.toDouble() ?? upSpeed;
           downSpeed = (jsonData['down_speed'] as num?)?.toDouble() ?? downSpeed;
           upTime = (jsonData['uptime'] as num?)?.toInt() ?? upTime;
-          cpuCoreLoads = List<double>.from(jsonData['cpu_core_loads'].map((item) => item.toDouble()));
+          cpuCoreLoads = List<double>.from(
+              jsonData['cpu_core_loads'].map((item) => item.toDouble()));
 
           online = true;
         } else {
@@ -320,9 +322,6 @@ void _showExitDialog(BuildContext context, MyAppState appState) {
   );
 }
 
-
-
-
 Color getGradientColor(double value) {
   value = value.clamp(0.0, 100.0);
 
@@ -342,7 +341,7 @@ class CPUCard extends StatelessWidget {
     final titleStyle = theme.textTheme.headlineSmall!.copyWith(
       color: theme.colorScheme.onPrimaryContainer,
       fontWeight: FontWeight.bold,
-      fontSize: 25, 
+      fontSize: 25,
     );
     final itemStyle = theme.textTheme.bodyLarge!.copyWith(
       color: theme.colorScheme.onPrimaryContainer,
@@ -385,9 +384,10 @@ class CPUCard extends StatelessWidget {
                     ),
                   ),
                   SizedBox(width: 10),
-                  Text("${appState.cpuLoad.toStringAsFixed(1)}%",
-                      style: itemStyle,
-                     ),
+                  Text(
+                    "${appState.cpuLoad.toStringAsFixed(1)}%",
+                    style: itemStyle,
+                  ),
                 ],
               ),
             ),
@@ -586,10 +586,7 @@ class NetworkCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              "Network",
-              style: titleStyle
-            ),
+            Text("Network", style: titleStyle),
             const SizedBox(height: 15),
             ListTile(
               leading: Icon(
@@ -651,5 +648,3 @@ class NetworkCard extends StatelessWidget {
     );
   }
 }
-
-

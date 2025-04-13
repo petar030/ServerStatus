@@ -14,58 +14,109 @@ class CpuPage extends StatelessWidget {
       value: appState,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('CPU Core Loads'),
+          title: Text('CPU '),
+          titleTextStyle: TextStyle(
+            color: Theme.of(context).colorScheme.onPrimary,
+            fontSize: 24,
+          ),
+          actions: [
+            Consumer<MyAppState>(
+              builder: (context, appState, _) => Row(
+                children: [
+                  Icon(
+                    appState.online ? Icons.wifi : Icons.signal_wifi_off,
+                    size: 24.0,
+                    color: appState.online ? Colors.green : Colors.red,
+                  ),
+                  SizedBox(width: 10),
+                ],
+              ),
+            ),
+          ],
         ),
         body: Consumer<MyAppState>(
           builder: (context, appState, child) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  //mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    
-                    Container(
-                      padding: EdgeInsets.all(20.0),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context).colorScheme.shadow,
-                            spreadRadius: 1,
-                            blurRadius: 4,
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          Text(
-                      "CPU Cores",
-                      style:
-                          Theme.of(context).textTheme.headlineSmall!.copyWith(
-                                color: Theme.of(context)
-                                    .colorScheme
-                                    .onPrimaryContainer,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 25,
-                              ),
-                    ), SizedBox(height: 20),
-                          SingleChildScrollView(
-                            child: SizedBox(
-                              height: 500,
-                              child: CpuCoreLoadGrid(appState: appState),
+            return SingleChildScrollView(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: EdgeInsets.all(20.0),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.shadow,
+                              spreadRadius: 1,
+                              blurRadius: 4,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              "CPU Cores",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall!
+                                  .copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 25,
+                                  ),
+                            ),
+                            SizedBox(height: 20),
+                            SingleChildScrollView(
+                              child: SizedBox(
+                                height: 500,
+                                child: CpuCoreLoadGrid(appState: appState),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
           },
         ),
+        floatingActionButton: Consumer<MyAppState>(
+          builder: (context, appState, _) => Align(
+            alignment: Alignment.bottomCenter,
+            child: AnimatedOpacity(
+              opacity: appState.online ? 0.0 : 1.0,
+              duration: Duration(milliseconds: 1500),
+              child: Container(
+                width: 250.0,
+                height: 60.0,
+                decoration: BoxDecoration(
+                  color: appState.online ? Colors.green : Colors.red,
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                child: Center(
+                  child: Text(
+                    appState.online
+                        ? 'Connection established'
+                        : 'Server not connected',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
       ),
     );
   }
