@@ -173,6 +173,7 @@ class SharedData:
             self.cpu_data_lock = threading.Lock() 
             self.cpu_temp_threshold = ConfigManager.get_int('thresholds', 'cpu_temp')
             self.cpu_usage_threshold = ConfigManager.get_int('thresholds', 'cpu_usage')
+            self.cpu_core_loads = []
 
             self.mem_used = 0
             self.mem_total = 0
@@ -211,12 +212,15 @@ class SharedData:
         cpu_temp_warning = False
         cpu_usage_warning = False
         while not self.event_flag.is_set():
-            cpu_usage = psutil.cpu_percent(1)
+            cpu_core_loads = psutil.cpu_percent(percpu=True, interval=1) 
+            cpu_usage = round((sum(cpu_core_loads) / len(cpu_core_loads)), 2)
             cpu_temp = self.get_cpu_temp()
+
 
             with self.cpu_data_lock:
                 self.cpu_usage = cpu_usage
                 self.cpu_temp = cpu_temp
+                self.cpu_core_loads = cpu_core_loads
 
             # CPU temperature warning
             if not cpu_temp_warning and cpu_temp > self.cpu_temp_threshold:
@@ -294,6 +298,7 @@ class SharedData:
         with self.cpu_data_lock:
             cpu_usage = self.cpu_usage
             cpu_temp = self.cpu_temp
+            cpu_core_loads = self.cpu_core_loads
         with self.mem_data_lock:
             mem_used = self.mem_used
             mem_total = self.mem_total
@@ -311,7 +316,8 @@ class SharedData:
             "mem_total": mem_total,
             "interface_name": self.interface_name,
             "up_speed": up_speed,
-            "down_speed": down_speed
+            "down_speed": down_speed,
+            "cpu_core_loads": self.cpu_core_loads
         }
         return json.dumps(data)
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:async/async.dart'; // Paket za StreamQueue
+import 'main.dart';
 import 'authorization.dart';
 
 class WebSocketClient {
@@ -85,9 +86,11 @@ class WebSocketClient {
 
       //COMMUNICATION
       while (!_completer!.isCompleted) {
+        print("TRENUTNA RUTA: ${routeObserver.currentRoute}");
+
         if (_completer != null && _completer!.isCompleted) break;
         _channel!.sink.add('GET_UPDATE');
-     
+
         if (_channel!.closeCode != null) {
           print('Connection is closed. Close code: ${_channel!.closeCode}');
           break; 
