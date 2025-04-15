@@ -56,9 +56,10 @@ class CpuPage extends StatelessWidget {
                           ],
                         ),
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              "CPU Cores",
+                              "Details",
                               style: Theme.of(context)
                                   .textTheme
                                   .headlineSmall!
@@ -71,12 +72,94 @@ class CpuPage extends StatelessWidget {
                                   ),
                             ),
                             SizedBox(height: 20),
-                            SingleChildScrollView(
-                              child: SizedBox(
-                                height: 500,
-                                child: CpuCoreLoadGrid(appState: appState),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: "Temperature: ",
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 18),
+                                  ),
+                                  TextSpan(
+                                    text: "${appState.cpuTemp} °C",
+                                    style: TextStyle(
+                                      color: getGradientColor(
+                                          appState.cpuTemp.toDouble()),
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                            Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: "Load: ",
+                                    style: TextStyle(
+                                        color: Colors.white, fontSize: 18),
+                                  ),
+                                  TextSpan(
+                                    text:
+                                        "${appState.cpuLoad.toStringAsFixed(2)} %",
+                                    style: TextStyle(
+                                      color: getGradientColor(appState.cpuLoad),
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              "Physical Cores: ${appState.cpuPhysicalCores}",
+                              style: TextStyle(fontSize: 18),
+                            ),
+                            Text(
+                              "Logical Cores: ${appState.cpuLogicalCores}",
+                              style: TextStyle(fontSize: 18),
+                            ),
+                            Text(
+                              "Frequency: ${appState.cpuFrequency.toStringAsFixed(2)} GHz",
+                              style: TextStyle(fontSize: 18),
+                            ),
+                            Text(
+                              "Process Count: ${appState.cpuProcessNum}",
+                              style: TextStyle(fontSize: 18),
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: 20),
+                      Container(
+                        padding: EdgeInsets.all(20.0),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.shadow,
+                              spreadRadius: 1,
+                              blurRadius: 4,
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              "Cores",
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall!
+                                  .copyWith(
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .onPrimaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 25,
+                                  ),
+                            ),
+                            SizedBox(height: 20),
+                            CpuCoreLoadGrid(appState: appState),
                           ],
                         ),
                       ),
@@ -130,6 +213,8 @@ class CpuCoreLoadGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
+      physics: NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 10.0,

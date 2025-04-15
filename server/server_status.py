@@ -95,7 +95,7 @@ class FCMTokens:
                 return set()
 
 class Notify:
-    _uri = "https://fcm-server-nbbp.onrender.com/send-notification"
+    _uri = "http://localhost:8787/send-notification" #"https://fcm-server-nbbp.onrender.com/send-notification" USE THIS SERVER FOR NOTIFICATIONS
     _notification_queue = queue.Queue()
 
     @staticmethod
@@ -170,10 +170,14 @@ class SharedData:
         if not hasattr(self, 'initialized'):
             self.cpu_usage = 0
             self.cpu_temp = 0
+            self.cpu_physical_cores = 0
+            self.cpu_logical_cores = 0
+            self.cpu_frequency = 0
+            self.cpu_process_num = 0
+            self.cpu_core_loads = []
             self.cpu_data_lock = threading.Lock() 
             self.cpu_temp_threshold = ConfigManager.get_int('thresholds', 'cpu_temp')
             self.cpu_usage_threshold = ConfigManager.get_int('thresholds', 'cpu_usage')
-            self.cpu_core_loads = []
 
             self.mem_used = 0
             self.mem_total = 0
@@ -215,12 +219,22 @@ class SharedData:
             cpu_core_loads = psutil.cpu_percent(percpu=True, interval=1) 
             cpu_usage = round((sum(cpu_core_loads) / len(cpu_core_loads)), 2)
             cpu_temp = self.get_cpu_temp()
+            cpu_physical_cores = psutil.cpu_count(logical=False)
+            cpu_logical_cores = psutil.cpu_count(logical=True)
+            cpu_frequency = round(psutil.cpu_freq().current / 1000, 2)
+            cpu_process_num = len(psutil.pids())
+           
+
 
 
             with self.cpu_data_lock:
                 self.cpu_usage = cpu_usage
                 self.cpu_temp = cpu_temp
                 self.cpu_core_loads = cpu_core_loads
+                self.cpu_physical_cores = cpu_physical_cores
+                self.cpu_logical_cores = cpu_logical_cores
+                self.cpu_frequency = cpu_frequency
+                self.cpu_process_num = cpu_process_num
 
             # CPU temperature warning
             if not cpu_temp_warning and cpu_temp > self.cpu_temp_threshold:
@@ -235,7 +249,7 @@ class SharedData:
                 cpu_usage_warning = True
             if cpu_usage_warning and cpu_usage < self.cpu_usage_threshold:
                 cpu_usage_warning = False
-
+            
             time.sleep(0.1)  
 
 
@@ -291,14 +305,14 @@ class SharedData:
 
 
     #GLOBAL
+
     def stop_updating(self):
         self.event_flag.set()
-    #RETURNING GET_UPDATE DATA
-    def get_update(self):
+    #RETURN HOME PAGE DATA
+    def get_home(self):
         with self.cpu_data_lock:
             cpu_usage = self.cpu_usage
             cpu_temp = self.cpu_temp
-            cpu_core_loads = self.cpu_core_loads
         with self.mem_data_lock:
             mem_used = self.mem_used
             mem_total = self.mem_total
@@ -306,9 +320,10 @@ class SharedData:
             up_speed = self.up_speed
             down_speed = self.down_speed
         
-        uptime = (datetime.datetime.now() - datetime.datetime.fromtimestamp(psutil.boot_time())).total_seconds()
+        uptime = int((datetime.datetime.now() - datetime.datetime.fromtimestamp(psutil.boot_time())).total_seconds())
         data = {
             "timestamp": time.time(),
+            "type": "get_home",
             "uptime": uptime,
             "cpu_usage": cpu_usage,
             "cpu_temp": cpu_temp,
@@ -317,8 +332,30 @@ class SharedData:
             "interface_name": self.interface_name,
             "up_speed": up_speed,
             "down_speed": down_speed,
-            "cpu_core_loads": self.cpu_core_loads
         }
+        return json.dumps(data)
+    
+    #RETURN CPU PAGE DATA
+    def get_cpu(self):
+        with self.cpu_data_lock:
+            cpu_usage = self.cpu_usage
+            cpu_temp = self.cpu_temp
+            cpu_core_loads = self.cpu_core_loads
+            cpu_physical_cores = self.cpu_physical_cores
+            cpu_logical_cores = self.cpu_logical_cores
+            cpu_frequency = self.cpu_frequency
+            cpu_process_num = self.cpu_process_num
+        data = {
+                "timestamp": time.time(),
+                "type": "get_cpu",
+                "cpu_usage": cpu_usage,
+                "cpu_temp": cpu_temp,
+                "cpu_physical_cores": cpu_physical_cores,
+                "cpu_logical_cores": cpu_logical_cores,
+                "cpu_frequency": cpu_frequency,
+                "cpu_process_num": cpu_process_num,
+                "cpu_core_loads": cpu_core_loads,
+            }    
         return json.dumps(data)
 
 class JWTManager:
@@ -363,7 +400,6 @@ class JWTManager:
 
 
 #WEBSOCKET
-
 async def websocket_handler(request):
     ws = web.WebSocketResponse()
     await ws.prepare(request)
@@ -388,8 +424,11 @@ async def websocket_handler(request):
                         continue
 
             #COMMUNICATION
-            if msg.data == "GET_UPDATE":
-                data = shared_data.get_update()
+            if msg.data == "GET_HOME":
+                data = shared_data.get_home()
+                await ws.send_str(data)
+            elif msg.data == "GET_CPU":
+                data = shared_data.get_cpu()
                 await ws.send_str(data)
     finally:
         request.app['websockets'].discard(ws)
@@ -419,7 +458,6 @@ async def check_token(request):
         })
     else:
         return web.Response(status=401, text="Invalid or expired token")
-
 async def login(request):
     try:
         data = await request.post()
@@ -449,7 +487,6 @@ async def login(request):
 
     except Exception as e:
         return web.Response(text=str(e), status=500)
-
 async def logout(request):
     data = await request.post()
 
@@ -460,7 +497,6 @@ async def logout(request):
     FCMTokens.remove_token(fcm_token)
     
     return web.Response(text='Logout successful', status=200)
-
 async def ping(request):
     return web.Response(text="pong")  
 
@@ -473,7 +509,6 @@ async def global_shutdown_async(app):
     shared_data = SharedData()
     shared_data.stop_updating()
     Notify.stop_service()
-
 def create_app():
     #Init config file connection
     ConfigManager.initialize()

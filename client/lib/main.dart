@@ -64,7 +64,7 @@ class MyApp extends StatelessWidget {
         
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade800, // Boja pozadine
+            backgroundColor: Colors.grey.shade800, // Boja pozadines://fcm-server-nbbp.onrender.com
             foregroundColor: Colors.white70, // Boja teksta
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8.0), // Zakrivljenost ivica

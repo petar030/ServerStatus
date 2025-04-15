@@ -12,12 +12,13 @@ class MyHomePage extends StatelessWidget {
   final String name;
   const MyHomePage({super.key, required this.uri, required this.name});
 
-  String formatUptime(int uptimeInSeconds) {
-    int hours = uptimeInSeconds ~/ 3600;
+  static String formatUptime(int uptimeInSeconds) {
+    int days = uptimeInSeconds ~/ 86400;
+    int hours = (uptimeInSeconds % 86400) ~/ 3600;
     int minutes = (uptimeInSeconds % 3600) ~/ 60;
     int seconds = uptimeInSeconds % 60;
 
-    return '${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    return '${days.toString()} days ${hours.toString().padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -162,15 +163,25 @@ class MyHomePage extends StatelessWidget {
 
 class MyAppState extends ChangeNotifier with WidgetsBindingObserver {
   bool online = false;
+  //CPU values
   var cpuTemp = 0;
   var cpuLoad = 0.0;
+  var cpuPhysicalCores = 0;
+  var cpuLogicalCores = 0;
+  var cpuFrequency = 0.0;
+  var cpuProcessNum = 0;
+  List<double> cpuCoreLoads = [];
+
+
+  //Memory values
   var memUsed = 0.0;
   var memTotal = 0.0;
+
+  //Network values
   var interfaceName = "";
   var downSpeed = 0.0;
   var upSpeed = 0.0;
   var upTime = 0;
-  List<double> cpuCoreLoads = [];
 
   late WebSocketClient client;
   late String uri;
@@ -208,17 +219,36 @@ class MyAppState extends ChangeNotifier with WidgetsBindingObserver {
 
         if (jsonParsed['online'] == true) {
           var jsonData = jsonParsed['data'];
-          cpuTemp = (jsonData['cpu_temp'] as num?)?.toInt() ?? cpuTemp;
-          cpuLoad = (jsonData['cpu_usage'] as num?)?.toDouble() ?? cpuLoad;
-          memUsed = (jsonData['mem_used'] as num?)?.toDouble() ?? memUsed;
-          memTotal = (jsonData['mem_total'] as num?)?.toDouble() ?? memTotal;
-          interfaceName =
-              jsonData['interface_name']?.toString() ?? interfaceName;
-          upSpeed = (jsonData['up_speed'] as num?)?.toDouble() ?? upSpeed;
-          downSpeed = (jsonData['down_speed'] as num?)?.toDouble() ?? downSpeed;
-          upTime = (jsonData['uptime'] as num?)?.toInt() ?? upTime;
-          cpuCoreLoads = List<double>.from(
-              jsonData['cpu_core_loads'].map((item) => item.toDouble()));
+          String type = jsonData['type'].toString();
+          if (type == 'get_home') {
+            cpuTemp = (jsonData['cpu_temp'] as num?)?.toInt() ?? cpuTemp;
+            cpuLoad = (jsonData['cpu_usage'] as num?)?.toDouble() ?? cpuLoad;
+            memUsed = (jsonData['mem_used'] as num?)?.toDouble() ?? memUsed;
+            memTotal = (jsonData['mem_total'] as num?)?.toDouble() ?? memTotal;
+            interfaceName =
+                jsonData['interface_name']?.toString() ?? interfaceName;
+            upSpeed = (jsonData['up_speed'] as num?)?.toDouble() ?? upSpeed;
+            downSpeed =
+                (jsonData['down_speed'] as num?)?.toDouble() ?? downSpeed;
+            upTime = (jsonData['uptime'] as num?)?.toInt() ?? upTime;
+          } else if (type == 'get_cpu') {
+            cpuTemp = (jsonData['cpu_temp'] as num?)?.toInt() ?? cpuTemp;
+            cpuLoad = (jsonData['cpu_usage'] as num?)?.toDouble() ?? cpuLoad;
+            cpuPhysicalCores =
+                (jsonData['cpu_physical_cores'] as num?)?.toInt() ??
+                    cpuPhysicalCores;
+            cpuLogicalCores =
+                (jsonData['cpu_logical_cores'] as num?)?.toInt() ??
+                    cpuLogicalCores;
+            cpuFrequency =
+                (jsonData['cpu_frequency'] as num?)?.toDouble() ?? cpuFrequency;
+            cpuProcessNum =
+                (jsonData['cpu_process_num'] as num?)?.toInt() ?? cpuProcessNum;
+            
+
+            cpuCoreLoads = List<double>.from(
+                jsonData['cpu_core_loads'].map((item) => item.toDouble()));
+          }
 
           online = true;
         } else {

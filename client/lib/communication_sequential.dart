@@ -86,10 +86,14 @@ class WebSocketClient {
 
       //COMMUNICATION
       while (!_completer!.isCompleted) {
-        print("TRENUTNA RUTA: ${routeObserver.currentRoute}");
+        print("TRENUTNA RUTA: ${routeObserver.getCurrentRoute()}");
+        String requestMsg = 'GET_HOME';
+        if(routeObserver.getCurrentRoute() == '/cpuPage'){
+          requestMsg = 'GET_CPU';
+        }
 
         if (_completer != null && _completer!.isCompleted) break;
-        _channel!.sink.add('GET_UPDATE');
+        _channel!.sink.add(requestMsg);
 
         if (_channel!.closeCode != null) {
           print('Connection is closed. Close code: ${_channel!.closeCode}');
