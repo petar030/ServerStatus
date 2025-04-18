@@ -7,12 +7,12 @@ import datetime
 import aiohttp
 from aiohttp import web
 import weakref
-import keyring
 import sqlite3
 import requests
 import queue
 import configparser
 import os
+import bcrypt
 
 
 class ConfigManager:
@@ -45,6 +45,10 @@ class ConfigManager:
     @staticmethod
     def get_int(section, option):
         return int(ConfigManager.config.get(section, option))
+    @staticmethod
+    def verify_password(entered_password):
+        stored_hash = ConfigManager.get('credentials', 'pass')
+        return bcrypt.checkpw(entered_password.encode(), stored_hash.encode())
 
 class FCMTokens:
     _db_path = "fcm_tokens.db"  
@@ -467,15 +471,16 @@ async def login(request):
 
         input_password = data['password']
 
-        stored_password = keyring.get_password("server_status", "default")
+
+        valid_password = ConfigManager.verify_password(input_password)
 
         #Add FCM token if exists
-        if input_password == stored_password and 'fcm_token' in data:
+        if  valid_password and 'fcm_token' in data:
             if data['fcm_token'] != '':
                 fcm_token = data['fcm_token']
                 FCMTokens.add_token(fcm_token)
 
-        if input_password == stored_password:
+        if valid_password:
             new_access_token = JWTManager.make_access_token()
             new_refresh_token = JWTManager.make_refresh_token()
             return web.json_response({

@@ -64,14 +64,14 @@ class MyApp extends StatelessWidget {
         
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.grey.shade800, // Boja pozadines://fcm-server-nbbp.onrender.com
-            foregroundColor: Colors.white70, // Boja teksta
+            backgroundColor: Colors.grey.shade800, 
+            foregroundColor: Colors.white70, 
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8.0), // Zakrivljenost ivica
             ),
             padding: EdgeInsets.symmetric(
-                vertical: 12.0, horizontal: 16.0), // Padding
-            elevation: 4, // Elevacija dugmeta (sjenka)
+                vertical: 12.0, horizontal: 16.0), 
+            elevation: 4, 
           ),
         ),
       ),
