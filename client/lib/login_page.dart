@@ -43,7 +43,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     bool available = await AuthorizationClient.ping(uri);
-    if(!mounted) return;
+    if (!mounted) return;
     if (!available) {
       autoConnectNotification(context, name);
       setState(() {
@@ -88,15 +88,39 @@ class _LoginPageState extends State<LoginPage> {
       _isLoading = true;
     });
 
+    // String uri = _uriController.text.trim();
+    // String name = _nameController.text;
+    // String port = _portController.text;
+    // if (port == "") {
+    //   if (uri.startsWith("http://")) port = '8080';
+    //   if (uri.startsWith("https://")) port = '443';
+    // }
+
+    // uri = '$uri:$port';
     String uri = _uriController.text.trim();
     String name = _nameController.text;
-    String port = _portController.text;
-    if (port == "") {
-      if (uri.startsWith("http://")) port = '8080';
-      if (uri.startsWith("https://")) port = '443';
+    String port = _portController.text.trim();
+
+    Uri parsedUri = Uri.parse(uri);
+
+    if (port.isEmpty) {
+      if (parsedUri.scheme == 'http') {
+        port = '8080';
+      } else if (parsedUri.scheme == 'https') {
+        port = '443';
+      }
     }
 
-    uri = '$uri:$port';
+    Uri finalUri = Uri(
+      scheme: parsedUri.scheme,
+      host: parsedUri.host,
+      port: int.tryParse(port),
+      path: parsedUri.path,
+    );
+
+    uri = finalUri.toString();
+
+    print(uri);
 
     bool available = await AuthorizationClient.ping(uri);
     if (!available) {
@@ -125,8 +149,7 @@ class _LoginPageState extends State<LoginPage> {
         context,
         MaterialPageRoute(
             builder: (context) => MyHomePage(uri: uri, name: name),
-            settings: RouteSettings(name: '/homePage')
-),
+            settings: RouteSettings(name: '/homePage')),
       );
     } else {
       _showLoginErrorDialog("Invalid password");
@@ -198,7 +221,7 @@ class _LoginPageState extends State<LoginPage> {
                   GestureDetector(
                     onTap: () {
                       _refresh();
-                      Navigator.of(dialogContext).pop(); 
+                      Navigator.of(dialogContext).pop();
                     },
                     child: Container(
                       padding:
@@ -327,4 +350,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-
